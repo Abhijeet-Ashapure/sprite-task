@@ -12,10 +12,6 @@ This application provides a comprehensive solution for user management, featurin
 -   **User Directory**: A visually appealing, paginated table to view, search, filter, and delete user records from Datastore. Supports server-side pagination with configurable page sizes (10, 25, 50, 100).
 -   **BigQuery Migration Dashboard**: A dedicated page to review users stored in Datastore and trigger a bulk migration process to a BigQuery `User` table. Now uses efficient **batch loading via Google Cloud Storage** to optimize for free-tier usage and scale.
 
-## 📚 Documentation
-
-**👉 For complete setup instructions, see [SETUP.md](SETUP.md)**
-
 ## Quick Start (Local Development)
 
 Follow these steps to get the application running on your local machine:
@@ -96,5 +92,3 @@ For deploying your application to Google App Engine Standard Environment (Java 1
     ```bash
     gcloud app deploy
     ```
-
-See [SETUP.md](SETUP.md) for more detailed deployment instructions and advanced configurations.
