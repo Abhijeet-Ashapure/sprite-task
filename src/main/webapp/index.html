@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>User Management – Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="/static/app.js" defer></script>
+</head>
+
+<body>
+    <div class="app-shell">
+        <header class="navbar" data-page="login"></header>
+
+        <main class="page">
+            <div class="login-wrapper">
+                <div class="card card-narrow">
+                    <h2>Welcome back</h2>
+                    <p class="subtitle" style="padding-right: 70px;">
+                        Sign in with credentials to manage users.
+                      </p>
+                      
+
+                    <form id="loginForm">
+                        <div class="field-group">
+                            <label for="email">Email</label>
+                            <input id="email" name="email" type="email" required>
+                        </div>
+                        <div class="field-group">
+                            <label for="password">Password</label>
+                            <input id="password" name="password" type="password" required>
+                        </div>
+                        <div class="form-actions" style="justify-content: center;">
+                            <button type="submit" class="button-primary">Login</button>
+                        </div>
+                    </form>
+                    <div id="message" class="status"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            await App.fetchSession();
+            App.renderNavbar('login');
+
+            const f = document.getElementById('loginForm');
+            const msg = document.getElementById('message');
+            
+            f.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const form = new FormData(f);
+                const email = form.get('email');
+                const password = form.get('password');
+                
+                if (!email || !password) {
+                    msg.textContent = 'Please enter both email and password.';
+                    msg.className = 'status error';
+                    return;
+                }
+                
+                msg.textContent = 'Logging in...';
+                msg.className = 'status';
+                
+                try {
+                    const resp = await fetch('/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ email: email.trim().toLowerCase(), password: password })
+                    });
+                    
+                    const text = await resp.text();
+                    msg.textContent = text;
+                    
+                    if (resp.ok) {
+                        msg.className = 'status success';
+                        setTimeout(() => {
+                            window.location.href = '/users.html';
+                        }, 500);
+                    } else {
+                        msg.className = 'status error';
+                    }
+                } catch (err) {
+                    msg.textContent = 'Network error: ' + err.message;
+                    msg.className = 'status error';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

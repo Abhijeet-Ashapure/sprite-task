@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Upload Users (Excel)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="/static/app.js" defer></script>
+</head>
+
+<body>
+    <div class="loader-overlay" id="loaderOverlay">
+        <div class="loader-container">
+
+            <div class="loader-content">
+                <div class="loader-text" id="loaderText">Uploading file...</div>
+                <div class="loader-progress">
+                    <div class="loader-progress-bar" id="loaderProgressBar"></div>
+                </div>
+                <div class="loader-percentage" id="loaderPercentage">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-shell">
+        <header class="navbar" data-page="upload"></header>
+
+        <main class="page">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div>
+                        <h2 style="margin: 0;">Upload Users</h2>
+                        <p class="subtitle muted" style="margin-top: 4px;">Import user data from an Excel file (.xlsx format)</p>
+                    </div>
+                    <button type="button" class="secondary" onclick="window.location='/sample/generate'" style="white-space: nowrap;">
+                        Download Sample
+                    </button>
+                </div>
+                
+                <form id="uploadForm" enctype="multipart/form-data" method="post" action="/upload">
+                    <div class="field-group">
+                        <label for="fileInput">Excel File</label>
+                        <input id="fileInput" type="file" name="file" accept=".xlsx" required />
+                        <p class="muted" style="margin-top: 8px; font-size: 0.85rem;">
+                            Required columns: Name, DOB, Email, Password, Phone, Gender, Address
+                        </p>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <button type="submit" class="button-primary">Upload Excel</button>
+                    </div>
+                </form>
+                <div id="result"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            await App.fetchSession();
+            App.renderNavbar('upload');
+
+            // Loader functions
+            function showLoader(text = 'Uploading file...') {
+                const overlay = document.getElementById('loaderOverlay');
+                const loaderText = document.getElementById('loaderText');
+                loaderText.textContent = text;
+                overlay.classList.add('active');
+            }
+
+            function hideLoader() {
+                const overlay = document.getElementById('loaderOverlay');
+                overlay.classList.remove('active');
+            }
+
+            function updateLoaderProgress(percent, text = null) {
+                const progressBar = document.getElementById('loaderProgressBar');
+                const percentage = document.getElementById('loaderPercentage');
+                progressBar.style.width = percent + '%';
+                percentage.textContent = Math.round(percent) + '%';
+                if (text) {
+                    document.getElementById('loaderText').textContent = text;
+                }
+            }
+
+            const form = document.getElementById('uploadForm');
+            const resultDiv = document.getElementById('result');
+            
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const fileInput = document.getElementById('fileInput');
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    resultDiv.textContent = 'Please select a file';
+                    resultDiv.className = 'status error';
+                    return;
+                }
+                
+                // Show loader
+                showLoader('Uploading file...');
+                updateLoaderProgress(0);
+                
+                // Use XMLHttpRequest for real upload progress tracking
+                const xhr = new XMLHttpRequest();
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                
+                // Track upload progress
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        // Show progress up to 90% during upload
+                        const uploadProgress = Math.min(percentComplete * 0.9, 90);
+                        updateLoaderProgress(uploadProgress, 'Uploading file...');
+                    }
+                });
+                
+                xhr.addEventListener('load', () => {
+                    if (xhr.status === 200) {
+                        updateLoaderProgress(95, 'Processing file...');
+                        
+                        setTimeout(() => {
+                            updateLoaderProgress(100, 'Upload complete!');
+                            
+                            setTimeout(() => {
+                                hideLoader();
+                                
+                                try {
+                                    const responseText = xhr.responseText.trim();
+                                    if (!responseText) {
+                                        resultDiv.textContent = 'Upload successful';
+                                        resultDiv.className = 'status success';
+                                        return;
+                                    }
+                                    const json = JSON.parse(responseText);
+                                    const totalCount = json.total;
+                                    const uploadedCount = json.uploaded;
+                                    if (typeof totalCount === 'number' && typeof uploadedCount === 'number') {
+                                        resultDiv.textContent = `Uploaded ${uploadedCount} out of ${totalCount} user${totalCount !== 1 ? 's' : ''}`;
+                                    } else {
+                                        resultDiv.textContent = responseText || 'Upload successful';
+                                    }
+                                    resultDiv.className = 'status success';
+                                } catch (e) {
+                                    // If JSON parsing fails, show the raw response
+                                    const responseText = xhr.responseText.trim();
+                                    if (responseText.toLowerCase().includes('error')) {
+                                        resultDiv.textContent = responseText;
+                                        resultDiv.className = 'status error';
+                                    } else {
+                                        resultDiv.textContent = responseText || 'Upload successful';
+                                        resultDiv.className = 'status success';
+                                    }
+                                }
+                            }, 500);
+                        }, 300);
+                    } else {
+                        hideLoader();
+                        resultDiv.textContent = 'Error: ' + xhr.responseText;
+                        resultDiv.className = 'status error';
+                    }
+                });
+                
+                xhr.addEventListener('error', () => {
+                    hideLoader();
+                    resultDiv.textContent = 'Upload failed: Network error';
+                    resultDiv.className = 'status error';
+                });
+                
+                xhr.addEventListener('abort', () => {
+                    hideLoader();
+                    resultDiv.textContent = 'Upload cancelled';
+                    resultDiv.className = 'status error';
+                });
+                
+                // Start the upload
+                xhr.open('POST', '/upload');
+                xhr.send(formData);
+            });
+        });
+    </script>
+</body>
+</html>
